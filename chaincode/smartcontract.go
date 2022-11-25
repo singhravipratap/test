@@ -18,17 +18,14 @@ type SmartContract struct {
 type Asset struct {
 	Availibility int    `json:"Availibility"`
 	ID           string `json:"ID"`
-	NetworkBW    int    `json:"NetworkBW"`
-	Latency		 int	`json:"Latency"`
+	Wallet       int    `json:"Wallet"`
+	Latency      int    `json:"Latency"`
 }
 
 // InitLedger adds a base set of assets to the ledger
-func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+func (s *SmartContract) InitContract(ctx contractapi.TransactionContextInterface) error {
 	assets := []Asset{
-		{ID: "asset1", Availibility: 99, NetworkBW: 40, Latency: 100},
-		{ID: "asset2", Availibility: 98, NetworkBW: 35, Latency: 150},
-		{ID: "asset3", Availibility: 95, NetworkBW: 10, Latency: 200},
-		
+		{ID: "asset1", Availibility: 99, Wallet: 100, Latency: 99},
 	}
 
 	for _, asset := range assets {
@@ -47,7 +44,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 }
 
 // CreateAsset issues a new asset to the world state with given details.
-func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, availibility int, networkbw int, latency int) error {
+func (s *SmartContract) AddPracticalAsset(ctx contractapi.TransactionContextInterface, id string, availibility int, wallet int, latency int) error {
 	exists, err := s.AssetExists(ctx, id)
 	if err != nil {
 		return err
@@ -57,10 +54,10 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 	}
 
 	asset := Asset{
-		ID:             id,
-		Availibility:   availibility,
-		NetworkBW:      networkbw,
-		Latency:        latency,
+		ID:           id,
+		Availibility: availibility,
+		Wallet:       wallet,
+		Latency:      latency,
 	}
 	assetJSON, err := json.Marshal(asset)
 	if err != nil {
@@ -90,7 +87,7 @@ func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, i
 }
 
 // UpdateAsset updates an existing asset in the world state with provided parameters.
-func (s *SmartContract) UpdateAsset(ctx contractapi.TransactionContextInterface, id string, availibility int, networkbw int, latency int) error {
+func (s *SmartContract) UpdateAsset(ctx contractapi.TransactionContextInterface, id string, availibility int, wallet int, latency int) error {
 	exists, err := s.AssetExists(ctx, id)
 	if err != nil {
 		return err
@@ -101,10 +98,10 @@ func (s *SmartContract) UpdateAsset(ctx contractapi.TransactionContextInterface,
 
 	// overwriting original asset with new asset
 	asset := Asset{
-		ID:             id,
-		Availibility:   availibility,
-		NetworkBW:      networkbw,
-		Latency:        latency,
+		ID:           id,
+		Availibility: availibility,
+		Wallet:       wallet,
+		Latency:      latency,
 	}
 	assetJSON, err := json.Marshal(asset)
 	if err != nil {
@@ -137,53 +134,50 @@ func (s *SmartContract) AssetExists(ctx contractapi.TransactionContextInterface,
 	return assetJSON != nil, nil
 }
 
-// TransferAsset updates the availibility field of asset with given id in world state, and returns the old availibility.
-/* func (s *SmartContract) TransferAsset(ctx contractapi.TransactionContextInterface, id string, newAvailibility int) (string, error) {
-	asset, err := s.ReadAsset(ctx, id)
+// compute the parameter values
+
+func (s *SmartContract) ComputeParameters(ctx contractapi.TransactionContextInterface) (string, error) {
+	var id1 string = "asset1"
+	asset, err := s.ReadAsset(ctx, id1)
 	if err != nil {
 		return "", err
 	}
+	refAvailibility := asset.Availibility
 
-	oldAvailibility := asset.Availibility
-	asset.Availibility = newAvailibility
+	//praAvaility
+
+	var id2 string = "asset2"
+	_, _ = s.ReadAsset(ctx, id2)
+	if err != nil {
+		return "", err
+	}
+	praAvailibility := asset.Availibility
+
+	if praAvailibility < refAvailibility {
+		fmt.Printf("TransferRefund")
+	}
+	return "", nil
+}
+
+// TransferAsset updates the wallet field of asset with given id in world state, and returns the newWallet.
+func (s *SmartContract) TransferRefund(ctx contractapi.TransactionContextInterface, id string, newWallet int) (int, error) {
+	asset, err := s.ReadAsset(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	oldWallet := asset.Wallet
+	asset.Wallet = newWallet
 
 	assetJSON, err := json.Marshal(asset)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	err = ctx.GetStub().PutState(id, assetJSON)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
-	return oldAvailibility, nil
-} */
-
-// GetAllAssets returns all assets found in world state
-func (s *SmartContract) GetAllAssets(ctx contractapi.TransactionContextInterface) ([]*Asset, error) {
-	// range query with empty string for startKey and endKey does an
-	// open-ended query of all assets in the chaincode namespace.
-	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
-	if err != nil {
-		return nil, err
-	}
-	// defer resultsIterator.Close()
-
-	var assets []*Asset
-	for resultsIterator.HasNext() {
-		queryResponse, err := resultsIterator.Next()
-		if err != nil {
-			return nil, err
-		}
-
-		var asset Asset
-		err = json.Unmarshal(queryResponse.Value, &asset)
-		if err != nil {
-			return nil, err
-		}
-		assets = append(assets, &asset)
-	}
-
-	return assets, nil
+	return oldWallet, nil
 }
